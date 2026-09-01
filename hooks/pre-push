@@ -43,7 +43,7 @@ if [ -f src/wiki-manifest.json ]; then
 fi
 
 # 2. Le rendu et son manifeste restent frères de dossier (contrainte INF-13).
-if [ -f src/index.html ] && grep -q "fetch('wiki-manifest.json')" src/index.html; then
+if [ -f src/index.html ] && grep -q "fetch('wiki-manifest.json'" src/index.html; then
   [ -f src/wiki-manifest.json ] && echo "✓ rendu et manifeste frères de dossier" || {
     echo "✗ src/index.html attend wiki-manifest.json comme frère — absent."
     ECHECS=$((ECHECS+1)); }

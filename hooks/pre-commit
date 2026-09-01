@@ -70,7 +70,7 @@ fi
 # 3. Le rendu et le manifeste restent frères de dossier.
 #    src/index.html charge le manifeste par chemin relatif : les séparer casse
 #    le chargement, sans erreur visible au commit.
-if [ -f src/index.html ] && grep -q "fetch('wiki-manifest.json')" src/index.html; then
+if [ -f src/index.html ] && grep -q "fetch('wiki-manifest.json'" src/index.html; then
   if [ ! -f src/wiki-manifest.json ]; then
     echo "✗ src/index.html attend wiki-manifest.json comme frère de dossier — absent."
     ECHECS=$((ECHECS+1))

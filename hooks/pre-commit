@@ -30,7 +30,9 @@ if [ -n "$FICHIERS" ]; then
   TROUVE=""
   while IFS= read -r f; do
     [ -f "$f" ] || continue
-    case "$(file -b --mime-type "$f")" in image/*|application/pdf|font/*) continue ;; esac
+    # Binaires ignorés. `file` n'est pas garanti présent sur le serveur ;
+    # `grep -I` classe lui-même le fichier et échoue sur un binaire.
+    grep -Iq . "$f" 2>/dev/null || continue
     if LC_ALL=C grep -qP '\xe2\x80\x8b|\xe2\x80\x8c|\xe2\x80\x8d|\xe2\x80\x8e|\xe2\x80\x8f' "$f" 2>/dev/null; then
       TROUVE="$TROUVE  $f\n"
     fi

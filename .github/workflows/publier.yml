@@ -1,0 +1,113 @@
+# Publication automatique du rendu sur sidyvision.com/instrument
+#
+# Chantier INF-14, second temps (2026-09-01) : Sidy demande la mise à jour
+# automatique. Ce workflow rejoue exactement ce que fait
+# `atelier/rd/outillage/publier-instrument-netlify.sh` au dépôt wiki — même
+# API, même garde-fou, même ordre.
+#
+# Pourquoi PAS une liaison Netlify → dépôt : le site publierait la racine de ce
+# dépôt et ÉCRASERAIT la page d'accueil de sidyvision.com. Le déploiement par
+# empreintes remplace l'intégralité du site ; la page d'accueil doit donc être
+# renvoyée à chaque passe, ce qu'une liaison ne saurait pas faire.
+
+name: Publier sur sidyvision.com/instrument
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/**']
+  workflow_dispatch:
+
+concurrency:
+  group: publication-sidyvision
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Récupérer la page d'accueil depuis le wiki
+        run: |
+          curl -sSfL --retry 3 \
+            https://raw.githubusercontent.com/Sidyvision/wiki/main/atelier/rd/infrastructure/captures/2026-09-01_sidyvision-com-racine.html \
+            -o accueil.html
+
+      - name: Garde-fou — la page d'accueil doit être celle de la référence
+        # Le déploiement remplace TOUT le site. Si la capture a dérivé, publier
+        # remplacerait la page d'accueil de sidyvision.com par autre chose.
+        # On refuse plutôt que de découvrir le dégât en ligne.
+        run: |
+          ATTENDU=6814d7f4846b6683e3854e6fa1a62df886723334
+          OBTENU=$(sha1sum accueil.html | cut -d' ' -f1)
+          if [ "$OBTENU" != "$ATTENDU" ]; then
+            echo "::error::La page d'accueil ne correspond plus à la référence."
+            echo "  attendu : $ATTENDU"
+            echo "  obtenu  : $OBTENU"
+            echo "  Refus — publier ainsi écraserait la page d'accueil du site."
+            echo "  Si le changement est voulu : reprendre la capture au wiki, puis"
+            echo "  mettre à jour ATTENDU ici et dans publier-instrument-netlify.sh."
+            exit 1
+          fi
+          echo "✓ page d'accueil conforme à la référence"
+
+      - name: Déployer
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          python3 - <<'PY'
+          import json, os, hashlib, urllib.request, time, sys
+          T = os.environ["NETLIFY_AUTH_TOKEN"]; S = os.environ["NETLIFY_SITE_ID"]
+          API = "https://api.netlify.com/api/v1"
+
+          def req(m, u, d=None, raw=False):
+              r = urllib.request.Request(
+                  API + u, method=m,
+                  data=(d if raw else (json.dumps(d).encode() if d is not None else None)))
+              r.add_header("Authorization", "Bearer " + T)
+              if d is not None:
+                  r.add_header("Content-Type",
+                               "application/octet-stream" if raw else "application/json")
+              with urllib.request.urlopen(r, timeout=90) as f:
+                  b = f.read()
+                  return json.loads(b) if b else {}
+
+          srcs = {
+              "/index.html": "accueil.html",
+              "/instrument/index.html": "src/index.html",
+              "/instrument/wiki-manifest.json": "src/wiki-manifest.json",
+          }
+          files = {k: hashlib.sha1(open(v, "rb").read()).hexdigest()
+                   for k, v in srcs.items()}
+          dep = req("POST", f"/sites/{S}/deploys", {"files": files})
+          for k, sha in files.items():
+              if sha in dep.get("required", []):
+                  req("PUT", f"/deploys/{dep['id']}/files{k}",
+                      open(srcs[k], "rb").read(), raw=True)
+                  print("téléversé :", k)
+          for _ in range(60):
+              d = req("GET", f"/deploys/{dep['id']}")
+              if d["state"] in ("ready", "error"):
+                  break
+              time.sleep(2)
+          if d["state"] != "ready":
+              sys.exit(f"déploiement en état {d['state']}")
+          print("✓ publié — https://sidyvision.com/instrument/")
+          PY
+
+      - name: Vérifier en ligne, plutôt que supposer
+        run: |
+          sleep 5
+          A=$(curl -sSL --retry 3 https://sidyvision.com/ | sha1sum | cut -d' ' -f1)
+          [ "$A" = "6814d7f4846b6683e3854e6fa1a62df886723334" ] \
+            && echo "✓ page d'accueil intacte" \
+            || { echo "::error::page d'accueil altérée !"; exit 1; }
+          B=$(curl -sSL --retry 3 https://sidyvision.com/instrument/ | sha1sum | cut -d' ' -f1)
+          C=$(sha1sum src/index.html | cut -d' ' -f1)
+          [ "$B" = "$C" ] \
+            && echo "✓ rendu en ligne identique au dépôt" \
+            || { echo "::error::le rendu en ligne ($B) diffère du dépôt ($C)"; exit 1; }
+          curl -sSL --retry 3 https://sidyvision.com/instrument/wiki-manifest.json \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print('✓ manifeste servi :', len(d['nodes']), 'nœuds')"

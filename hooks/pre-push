@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Hook pre-push — garde-fou local de `main`, dépôt de rendu.
+#
+# Ouvert le 2026-09-01 (chantier INF-14), à l'alignement d'`enforce_admins` sur
+# la doctrine du wiki (chantier PRO-01) : le flux par pull request n'est pas
+# imposé, un garde-fou local prend le relais avant que la faute quitte la
+# machine.
+#
+# CE QUI CHANGE AVEC L'ALIGNEMENT, ET QU'IL FAUT AVOIR EN TÊTE.
+# Depuis la mise en place de .github/workflows/publier.yml, toute poussée sur
+# `main` touchant src/** PUBLIE EN PRODUCTION sur sidyvision.com/instrument.
+# Tant que `main` exigeait une pull request, celle-ci tenait lieu de porte
+# humaine. Elle n'est plus exigée : la porte se déplace ici, elle ne disparaît
+# pas (Cmd 13 ; Action PUBLICATION du label, point 4).
+#
+# Ce n'est pas une serrure : `git push --no-verify` le contourne, délibérément.
+# Le hook empêche l'inattention, pas la décision.
+#
+# Installation : bash hooks/installer-hooks.sh
+
+set -uo pipefail
+RACINE="$(git rev-parse --show-toplevel)"; cd "$RACINE" || exit 1
+ECHECS=0
+echo "── garde-fou pre-push ───────────────────────────────────────────"
+
+BRANCHE="$(git rev-parse --abbrev-ref HEAD)"
+DISTANT="$(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null || echo '')"
+if [ -n "$DISTANT" ]; then
+  PLAGE="$DISTANT..HEAD"
+else
+  PLAGE="HEAD"
+fi
+TOUCHES="$(git diff --name-only "$PLAGE" 2>/dev/null || git show --name-only --format= HEAD)"
+
+# 1. Le manifeste doit rester du JSON valide — c'est lui que le rendu consomme.
+if [ -f src/wiki-manifest.json ]; then
+  if python3 -c "import json,sys; d=json.load(open('src/wiki-manifest.json')); sys.exit(0 if d.get('nodes') else 1)" 2>/dev/null; then
+    echo "✓ manifeste : JSON valide, nœuds présents"
+  else
+    echo "✗ src/wiki-manifest.json est illisible ou vide de nœuds."
+    ECHECS=$((ECHECS+1))
+  fi
+fi
+
+# 2. Le rendu et son manifeste restent frères de dossier (contrainte INF-13).
+if [ -f src/index.html ] && grep -q "fetch('wiki-manifest.json')" src/index.html; then
+  [ -f src/wiki-manifest.json ] && echo "✓ rendu et manifeste frères de dossier" || {
+    echo "✗ src/index.html attend wiki-manifest.json comme frère — absent."
+    ECHECS=$((ECHECS+1)); }
+fi
+
+# 3. LA PORTE HUMAINE. Pousser src/ sur main publie en production.
+if [ "$BRANCHE" = "main" ] && echo "$TOUCHES" | grep -q '^src/'; then
+  if [ "${PUBLIER:-}" != "1" ]; then
+    echo "✗ Cette poussée MODIFIE src/ SUR main — donc elle PUBLIERA EN PRODUCTION"
+    echo "  sur https://sidyvision.com/instrument/ dès que l'action GitHub tournera."
+    echo
+    echo "  Le protocole veut une validation explicite avant toute production"
+    echo "  (Action PUBLICATION, point 4). Pour confirmer que c'est bien voulu :"
+    echo
+    echo "      PUBLIER=1 git push"
+    echo
+    echo "  Pour préparer sans publier : pousser sur une branche, pas sur main."
+    ECHECS=$((ECHECS+1))
+  else
+    echo "✓ publication en production confirmée (PUBLIER=1)"
+  fi
+fi
+
+echo "─────────────────────────────────────────────────────────────────"
+[ "$ECHECS" -eq 0 ] || { echo "$ECHECS contrôle(s) en échec — poussée refusée."; exit 1; }
+exit 0

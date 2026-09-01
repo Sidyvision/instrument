@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Hook pre-commit — garde-fou local du dépôt de rendu.
+#
+# Ouvert le 2026-09-01 (chantier INF-13). Motif, en deux temps :
+#
+#   1. La protection serveur de `main` n'est PAS disponible ici. GitHub la
+#      réserve aux dépôts publics ou aux plans payants, et ce dépôt est privé
+#      par verdict de Sidy (INS-09 est un rendu en `attente-verdict` : rien de
+#      non visé ne doit être public). L'API répond 403.
+#   2. Le wiki a déjà tranché ce cas de figure. Chantier PRO-01, 2026-09-01 :
+#      `enforce_admins: false` acté, garde-fou local préféré à un flux par pull
+#      request. La même doctrine s'applique ici, à plus forte raison.
+#
+# Ce n'est pas une serrure : `git commit --no-verify` le contourne,
+# délibérément. Le hook empêche l'inattention, pas la décision.
+#
+# Installation : bash hooks/installer-hooks.sh
+
+set -uo pipefail
+RACINE="$(git rev-parse --show-toplevel)"; cd "$RACINE" || exit 1
+ECHECS=0
+
+echo "── garde-fou pre-commit ─────────────────────────────────────────"
+
+# 1. Hygiène Unicode (Cmd 15 du wiki — incident ZWJ du 2026-08-22).
+#    Caractères invisibles : ils masquent du code, contournent des filtres,
+#    corrompent des données structurées.
+FICHIERS="$(git diff --cached --name-only --diff-filter=ACM)"
+if [ -n "$FICHIERS" ]; then
+  TROUVE=""
+  while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    case "$(file -b --mime-type "$f")" in image/*|application/pdf|font/*) continue ;; esac
+    if LC_ALL=C grep -qP '\xe2\x80\x8b|\xe2\x80\x8c|\xe2\x80\x8d|\xe2\x80\x8e|\xe2\x80\x8f' "$f" 2>/dev/null; then
+      TROUVE="$TROUVE  $f\n"
+    fi
+    if [ "$(head -c 3 "$f" | xxd -p 2>/dev/null)" = "efbbbf" ]; then
+      TROUVE="$TROUVE  $f (BOM)\n"
+    fi
+  done <<< "$FICHIERS"
+  if [ -n "$TROUVE" ]; then
+    echo "✗ Cmd 15 — caractères Unicode invisibles détectés :"
+    printf "%b" "$TROUVE"
+    echo "  Refus. Investiguer, puis déposer un rapport d'incident au wiki"
+    echo "  (atelier/rd/incidents/)."
+    ECHECS=$((ECHECS+1))
+  else
+    echo "✓ hygiène Unicode (Cmd 15)"
+  fi
+fi
+
+# 2. Le manifeste est REÇU, jamais édité ici (§VII du wiki, flux à sens unique).
+#    On ne peut pas prouver qu'une modification vient bien du wiki ; on peut
+#    refuser qu'elle passe inaperçue.
+if git diff --cached --name-only | grep -q '^src/wiki-manifest\.json$'; then
+  if [ "${MANIFESTE_RECU:-}" != "1" ]; then
+    echo "✗ src/wiki-manifest.json est modifié."
+    echo "  Ce fichier est REÇU du wiki, jamais édité ici. Toute correction se"
+    echo "  fait au wiki dans instrument-donnees.yaml, puis se republie par"
+    echo "  atelier/rd/outillage/publier-manifeste-instrument.sh."
+    echo "  Si ce commit EST une publication légitime :  MANIFESTE_RECU=1 git commit ..."
+    ECHECS=$((ECHECS+1))
+  else
+    echo "✓ manifeste reçu du wiki (MANIFESTE_RECU=1)"
+  fi
+fi
+
+# 3. Le rendu et le manifeste restent frères de dossier.
+#    src/index.html charge le manifeste par chemin relatif : les séparer casse
+#    le chargement, sans erreur visible au commit.
+if [ -f src/index.html ] && grep -q "fetch('wiki-manifest.json')" src/index.html; then
+  if [ ! -f src/wiki-manifest.json ]; then
+    echo "✗ src/index.html attend wiki-manifest.json comme frère de dossier — absent."
+    ECHECS=$((ECHECS+1))
+  else
+    echo "✓ rendu et manifeste frères de dossier"
+  fi
+fi
+
+echo "─────────────────────────────────────────────────────────────────"
+[ "$ECHECS" -eq 0 ] || { echo "$ECHECS contrôle(s) en échec — commit refusé."; exit 1; }
+exit 0

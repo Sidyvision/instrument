@@ -1,0 +1,7 @@
+# Artefacts locaux
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Le manifeste est REÇU du wiki, jamais généré ici — il est versionné, pas ignoré.

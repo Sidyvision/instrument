@@ -60,6 +60,44 @@
   #stations .plan{display:flex;gap:5px;align-items:center;margin:.4rem 0 0;font-size:.9em;opacity:.8}
   /* `display:flex` l'emporterait sur l'attribut `hidden` natif : à rétablir. */
   #stations .plan[hidden]{display:none}
+  /* -- Mode cosmologique (INS-15) -----------------------------------------
+     Les deux modes ne sont pas deux vues d'un même objet : ils figurent deux
+     ordres de réalisation (verdict Sidy, 2026-09-02) — petits mystères /
+     état primordial d'un côté, grands mystères / Délivrance de l'autre.
+     Le plan de base est le MÊME : indéterminé en principe, secondairement
+     déterminé comme l'état humain (États multiples, ch. XI). */
+  #polaire{top:max(env(safe-area-inset-top),10px);right:10px;max-width:min(76vw,330px);
+    max-height:calc(100dvh - 24px);overflow-y:auto;display:none;line-height:1.5}
+  #polaire.on{display:block}
+  #polaire h2{margin:0 0 .35rem;font-size:.95em;color:var(--blanc);font-weight:600;
+    letter-spacing:.03em;text-transform:uppercase}
+  #polaire .pdv{margin:0 0 .5rem;font-size:.88em;color:var(--argent);
+    border-left:2px solid var(--argent);padding-left:.45rem}
+  #polaire .r{display:flex;align-items:center;gap:.4rem;margin:.25rem 0;font-size:.9em}
+  #polaire .r label{flex:0 0 5.4em;opacity:.75}
+  #polaire .r input[type=range]{flex:1;min-width:0;accent-color:var(--blanc)}
+  #polaire .r output{flex:0 0 4.6em;text-align:right;opacity:.9}
+  #polaire .lu{margin:.4rem 0 0;font-size:.88em;opacity:.9}
+  #polaire .lu b{color:var(--blanc)}
+  #polaire .etats{margin:.45rem 0 0;font-size:.86em}
+  #polaire .etats .t{color:var(--blanc);font-weight:600;margin:.35rem 0 .15rem}
+  #polaire .etats .src{opacity:.55;font-size:.92em;margin:0 0 .2rem}
+  #polaire .etats ol{margin:.1rem 0;padding-left:1.3em}
+  #polaire .etats li{margin:.05rem 0}
+  #polaire .etats li.actif{color:var(--blanc);font-weight:600}
+  #polaire .etats li.eteint{opacity:.32}
+  /* Ce qui n'est pas établi ne se fond jamais avec l'établi (règle 3). */
+  #polaire .sug{border-left:2px dashed #e2a08f;padding-left:.45rem;opacity:.92}
+  #polaire .rejete{border-left:2px dashed #e2a08f;padding-left:.45rem;margin:.3rem 0 0}
+  #polaire .rejete b{color:#e2a08f}
+  #polaire .div{margin:.35rem 0 0;font-size:.86em;opacity:.75;
+    border-top:1px solid rgba(242,242,242,.18);padding-top:.25rem}
+  #polaire button{font:inherit;font-size:.9em;color:var(--texte);background:rgba(255,255,255,.05);
+    border:1px solid rgba(242,242,242,.35);padding:.15rem .45rem;cursor:pointer;
+    -webkit-tap-highlight-color:transparent}
+  #polaire button[aria-pressed="true"]{background:var(--blanc);color:#000;border-color:var(--blanc)}
+  #bascule-mode{margin:.4rem 0 0;display:block;width:100%;text-align:center;
+    letter-spacing:.03em;text-transform:uppercase;font-size:.86em}
   @media (max-width:520px){ #aide{display:none} }
 </style>
 </head>
@@ -91,7 +129,36 @@
     </div>
   </div>
 
-  <div class="panneau" id="aide">glisser : orbiter · pincer : zoom<br>toucher un nœud : détail<br>stations : 0–6 · axe unifié : U</div>
+  <div class="panneau" id="aide">glisser : orbiter · pincer : zoom<br>toucher un nœud : détail<br>stations : 0–6 · axe unifié : U · cosmologique : C</div>
+
+  <div class="panneau" id="polaire">
+    <h2>Mode cosmologique</h2>
+    <p class="pdv" id="pol-pdv">plan déterminé comme état humain — un point de vue, non un absolu</p>
+    <div class="r"><label>latitude</label>
+      <!-- bornes écrasées depuis le manifeste au démarrage (aucune valeur doctrinale ici) -->
+      <input type="range" id="pol-lat" min="0" max="90" step="0.01" value="90">
+      <output id="pol-lat-v">90,00°</output></div>
+    <div class="r"><label>jour</label>
+      <input type="range" id="pol-jour" min="0" max="365" step="0.25" value="80">
+      <output id="pol-jour-v">80</output></div>
+    <div class="r"><label>heure</label>
+      <input type="range" id="pol-heure" min="0" max="24" step="0.05" value="12">
+      <output id="pol-heure-v">12,0 h</output></div>
+    <div class="r"><label>seuil</label>
+      <input type="range" id="pol-seuil" min="0" max="2" step="1" value="1">
+      <output id="pol-seuil-v">—</output></div>
+    <div class="r"><label>obliquité</label>
+      <input type="range" id="pol-obl" min="0" max="90" step="0.01" value="0">
+      <output id="pol-obl-v">23,44°</output></div>
+    <div class="r" style="gap:.3rem">
+      <button type="button" id="pol-stations" title="stations sourcées">stations</button>
+      <button type="button" id="pol-annee" aria-pressed="false">parcourir l'année</button>
+      <button type="button" id="pol-yugas" aria-pressed="false">Manvantara</button>
+    </div>
+    <div class="lu" id="pol-lecture"></div>
+    <div class="etats" id="pol-etats"></div>
+    <button type="button" id="bascule-mode">→ mode métaphysique</button>
+  </div>
 
   <div class="panneau" id="info">
     <h2 id="info-label"></h2>
@@ -109,7 +176,8 @@
     <i style="background:var(--argent)"></i>bezel zodiacal (signes / manāzil / maisons — toucher un cran)<br>
     <i style="background:#cfe4d8"></i>registre parallèle (autre partition du même axe)<br>
     <i style="background:#d9a441"></i>canal solaire (<i style="background:#9fb4c9"></i>lunaire) — voie latérale, jamais un centre<br>
-    <span id="bascule-axe" style="cursor:pointer;text-decoration:underline dotted">mode : <b id="mode-axe">VUE ÉCLATÉE</b> — touche U : un seul axe sous tous les voiles</span>
+    <span id="bascule-axe" style="cursor:pointer;text-decoration:underline dotted">mode : <b id="mode-axe">VUE ÉCLATÉE</b> — touche U : un seul axe sous tous les voiles</span><br>
+    <span id="entree-cosmo" style="cursor:pointer;text-decoration:underline dotted">→ mode COSMOLOGIQUE (touche C) — l'horizon, le soleil, ses états</span>
   </div>
 </div>
 
@@ -1437,6 +1505,420 @@ var posNotionnels = {};
   cercle.rotation.x = -Math.PI / 2; cercle.position.y = y; monde.add(cercle);
 })();
 
+/* =========================================================================
+   CALQUE POLAIRE — le mode COSMOLOGIQUE (chantier INS-15, plan visé 2026-09-02)
+   =========================================================================
+
+   CE QUE CE CALQUE EST. Le second des deux points de vue de l'Instrument. Il
+   ne crée AUCUN objet neuf : il DÉTERMINE le plan de base qui existe déjà dans
+   la scène — « indéterminé en principe » (États multiples, ch. XI) — comme
+   l'état humain, et déploie autour de lui l'horizon et la sphère céleste.
+
+   CE QUE LES DEUX MODES SONT (verdict Sidy, 2026-09-02, cité au chantier) :
+   cosmologique et métaphysique sont en lien direct avec les petits et les
+   grands mystères, l'état primordial et la Délivrance. La chaîne est au dépôt :
+   les deux portes solsticiales portent les deux clefs, « celles des grands
+   mystères et des petits mystères », et donnent accès aux deux moitiés
+   ascendante et descendante — dêva-yâna / pitri-yâna (SSS ch. XXXVII).
+
+   CE QU'IL NE FAIT PAS :
+   - il n'écrit AUCUNE valeur doctrinale en dur : tout vient de MANIFESTE.polaire
+     (règle 2 du CLAUDE.md de ce dépôt) ;
+   - il ne figure AUCUN degré de réalisation : ni parcours, ni progression, ni
+     position de quiconque (Cmd 12 ; ch. XXVII — le rang de l'état humain nous
+     est inconnaissable) ;
+   - il ne fond jamais le suggéré avec l'établi : `academique` et `suggere`
+     s'affichent en pointillé (règle 3) ;
+   - il ne localise PAS la seconde station : un parallèle n'est pas une adresse.
+
+   LE REPLI, ET POURQUOI IL N'Y EN A PAS. Le reste du fichier porte des données
+   de repli (l. ~186) pour le cas où le manifeste ne résout pas. Le mode
+   cosmologique, lui, REFUSE de s'ouvrir sans manifeste — décision de la spec,
+   soumise à Sidy. Motif : un axe sans son manifeste reste un axe ; un horizon
+   sans son manifeste serait une invention. Toutes ses valeurs sont doctrinales
+   ou sourcées, aucune n'est structurelle.
+   ========================================================================= */
+var POLAIRE = (function(){
+  var P = (MANIFESTE && MANIFESTE.polaire) || null;
+  var calque = new THREE.Group(); calque.visible = false; monde.add(calque);
+  var actif = false;
+
+  // Sans donnée, le mode n'existe pas. On le dit, et on n'invente rien.
+  var entree = document.getElementById("entree-cosmo");
+  if (!P){
+    if (entree){
+      entree.textContent = "mode cosmologique indisponible — le manifeste ne porte pas de bloc polaire";
+      entree.style.textDecoration = "none";
+      entree.style.opacity = ".5";
+      entree.style.cursor = "default";
+    }
+    return { actif: function(){ return false; }, basculer: function(){}, majBoucle: function(){} };
+  }
+
+  var d2r = function(d){ return d * Math.PI / 180; },
+      r2d = function(r){ return r * 180 / Math.PI; };
+  var ANNEE = 365.24;
+  var OBL0 = Number(P.obliquite_deg);            // DÉRIVÉE de zodiaque:, jamais redéclarée
+  var ARCTIQUE = Number(P.latitude_min_deg);
+  var SEUILS = (P.seuils_crepusculaires && P.seuils_crepusculaires.valeurs) || [];
+  var iSeuil = 1, R = 22;
+
+  var etat = {
+    lat: Number(P.latitude_deg), jour: 80, heure: 12,
+    obl: OBL0, annee: false, yugas: false, iStation: 0, tours: 0, dernierAz: null
+  };
+
+  /* --- Géométrie. Identique à atelier/rd/outillage/verifier-geometrie-polaire.py,
+         qui la contrôle : 10 contrôles, tous vus échouer sous biais.
+         Repère : X = est, Y = zénith, Z = sud. ---------------------------- */
+  function declinaison(j){ return etat.obl * Math.sin(2 * Math.PI * j / ANNEE); }
+  function baseLocale(lat){
+    var phi = d2r(lat);
+    return { m: new THREE.Vector3(0, Math.cos(phi), Math.sin(phi)),
+             e: new THREE.Vector3(1, 0, 0),
+             p: new THREE.Vector3(0, Math.sin(phi), -Math.cos(phi)) };
+  }
+  function directionSoleil(lat, dec, H){
+    var b = baseLocale(lat), d = d2r(dec), h = d2r(H);
+    return new THREE.Vector3()
+      .addScaledVector(b.m,  Math.cos(d) * Math.cos(h))
+      .addScaledVector(b.e, -Math.cos(d) * Math.sin(h))
+      .addScaledVector(b.p,  Math.sin(d));
+  }
+  function hauteur(v){ return r2d(Math.asin(Math.max(-1, Math.min(1, v.y)))); }
+  function azimut(v){ return (r2d(Math.atan2(v.x, -v.z)) + 360) % 360; }
+  function angleHoraire(h){ return (h - 12) * 15; }
+  // Mois où le soleil paraît. La part de nuit continue vaut 1/2 - arcsin(k)/pi :
+  // écrite arcsin(k)/pi, elle donnait DOUZE mois au pôle — un pôle sans nuit.
+  function moisDeSoleil(lat){
+    if (etat.obl <= 0) return 12;
+    var k = Math.min(1, Math.max(0, (90 - lat) / etat.obl));
+    return 12 * (0.5 + Math.asin(k) / Math.PI);
+  }
+  // Pas de repli en dur : -18° serait une valeur doctrinale écrite dans le code
+  // (règle 2). Sans seuil déclaré, l'aurore ne se dessine pas — une donnée
+  // absente n'est jamais suppléée.
+  function seuilDeg(){ return SEUILS.length ? Number(SEUILS[iSeuil].deg) : null; }
+
+  /* --- Pièces ------------------------------------------------------------ */
+  function ligne(pts, couleur, opacite, pointillee, largeur){
+    var g = new THREE.BufferGeometry().setFromPoints(pts);
+    var o = { color: couleur, transparent: true, opacity: opacite, linewidth: largeur || 1 };
+    if (pointillee){ o.dashSize = .6; o.gapSize = .5; }
+    var l = new THREE.Line(g, pointillee ? new THREE.LineDashedMaterial(o)
+                                         : new THREE.LineBasicMaterial(o));
+    if (pointillee) l.computeLineDistances();
+    calque.add(l); return l;
+  }
+  function cercleXZ(r, n){
+    var p = [];
+    for (var i = 0; i <= n; i++){ var a = i / n * Math.PI * 2;
+      p.push(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)); }
+    return p;
+  }
+
+  var horizon = ligne(cercleXZ(R, 192), 0x9aa4c0, .6, false, 2);
+  var disqueH = new THREE.Mesh(new THREE.CircleGeometry(R, 96),
+    new THREE.MeshBasicMaterial({ color: 0x9aa4c0, transparent: true, opacity: .06,
+                                  side: THREE.DoubleSide }));
+  disqueH.rotation.x = -Math.PI / 2; calque.add(disqueH);
+  var sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 30, 20),
+    new THREE.MeshBasicMaterial({ color: 0x2a3350, wireframe: true,
+                                  transparent: true, opacity: .14 }));
+  calque.add(sphere);
+
+  var equateur = ligne(cercleXZ(1, 192), 0x7fa8c8, .45, false);
+  var axeCiel  = ligne([new THREE.Vector3(), new THREE.Vector3()], 0xd4a94e, .9, false, 2);
+  var cercleJour = ligne(cercleXZ(1, 192), 0xffd977, .55, false);
+  // Tilak est `academique` : sa trace est POINTILLÉE, jamais fondue avec l'établi.
+  var traceAn  = ligne([new THREE.Vector3()], 0xffd977, .30, true);
+  var arcAurore = ligne(cercleXZ(R, 192), 0xe0705a, 0, true, 2);
+
+  var soleil = new THREE.Mesh(new THREE.SphereGeometry(.66, 20, 14),
+    new THREE.MeshBasicMaterial({ color: 0xffd977 }));
+  calque.add(soleil);
+
+  var etiqPole = etiquette("Pôle céleste", 1.5, "#d4a94e"); calque.add(etiqPole);
+  var etiqPdv  = etiquette("plan déterminé comme état humain", 1.15, "#7fa8c8");
+  etiqPdv.position.set(0, .5, 0); calque.add(etiqPdv);
+  var etiqAurore = etiquette("aurore 🔍", 1.25, "#e0705a");
+  etiqAurore.visible = false; calque.add(etiqAurore);
+
+  // Les quatre directions. Au pôle exact, elles perdent leur sens : le rendu
+  // le DIT plutôt que de le taire — « le soleil se lève au sud » veut dire, là,
+  // que l'équateur est dans toutes les directions.
+  var gCard = new THREE.Group(); calque.add(gCard);
+  [["N",0,-1],["E",1,0],["S",0,1],["O",-1,0]].forEach(function(c){
+    var t = etiquette(c[0], 1.5, "#9aa4c0");
+    t.position.set(c[1] * (R + 1.7), .5, c[2] * (R + 1.7)); gCard.add(t);
+  });
+
+  // La roue du Manvantara — secteurs proportionnels, sous l'horizon (échelle du
+  // cycle, non du jour). Aucune datation du présent n'est portée.
+  var gYugas = new THREE.Group(); gYugas.visible = false; calque.add(gYugas);
+  (function(){
+    var C = P.cycles; if (!C || !C.yugas) return;
+    var total = C.yugas.reduce(function(a, y){ return a + Number(y.ans); }, 0);
+    var a0 = Math.PI / 2, rInt = 6, rExt = R * .9;
+    var teintes = [0xf2e2a8, 0xe89b4f, 0xdd7238, 0xc8412f];
+    C.yugas.forEach(function(y, i){
+      var arc = 2 * Math.PI * Number(y.ans) / total;
+      var m = new THREE.Mesh(new THREE.RingGeometry(rInt, rExt, 96, 1, a0, arc),
+        new THREE.MeshBasicMaterial({ color: teintes[i % 4], transparent: true,
+                                      opacity: .28, side: THREE.DoubleSide }));
+      m.rotation.x = Math.PI / 2; gYugas.add(m);
+      var am = a0 + arc / 2, rm = (rInt + rExt) / 2;
+      var t = etiquette(y.nom + " " + Number(y.ans).toLocaleString("fr-FR"), 1.15, "#f0e6cf");
+      t.position.set(Math.cos(am) * rm, -.4, -Math.sin(am) * rm); gYugas.add(t);
+      a0 += arc;
+    });
+    gYugas.position.y = -1.4;
+    var t = etiquette("un tour = un Manvantara (" +
+      Number(C.manvantara_ans).toLocaleString("fr-FR") + " ans)", 1.05, "#9aa4c0");
+    t.position.set(0, -.4, 0); gYugas.add(t);
+  })();
+
+  /* --- Mise à jour de la scène ------------------------------------------- */
+  function majLigne(obj, pts){
+    obj.geometry.setFromPoints(pts);
+    obj.geometry.attributes.position.needsUpdate = true;
+    if (obj.computeLineDistances) obj.computeLineDistances();
+  }
+  function cercleRevolution(dec){
+    var p = [];
+    for (var i = 0; i <= 192; i++) p.push(directionSoleil(etat.lat, dec, i / 192 * 360).multiplyScalar(R * .985));
+    return p;
+  }
+
+  function majScene(){
+    var dec = declinaison(etat.jour), H = angleHoraire(etat.heure);
+    var v = directionSoleil(etat.lat, dec, H), h = hauteur(v), az = azimut(v);
+
+    soleil.position.copy(v.clone().multiplyScalar(R * .985));
+    majLigne(cercleJour, cercleRevolution(dec));
+    majLigne(equateur, cercleRevolution(0));
+
+    var p = baseLocale(etat.lat).p;
+    majLigne(axeCiel, [p.clone().multiplyScalar(-R * 1.02), p.clone().multiplyScalar(R * 1.02)]);
+    etiqPole.position.copy(p.clone().multiplyScalar(R * 1.11));
+
+    // La révolution ascendante et descendante — l'objet nommé par la demande.
+    var t = [];
+    for (var j = 0; j <= 365; j += 1.5)
+      t.push(directionSoleil(etat.lat, declinaison(j), (j * 360) % 360 + H).multiplyScalar(R * .96));
+    majLigne(traceAn, t);
+
+    // L'aurore, et le COMPTE de ses tours : les « trente sœurs » du texte sont
+    // trente tours d'horizon. « Trente marches d'une seule aurore » dit le même
+    // fait sous l'autre aspect — une seule aurore, trente révolutions.
+    var sc = seuilDeg();
+    var enAurore = (sc !== null && h < 0 && h > sc);
+    arcAurore.material.opacity = enAurore ? .55 : 0;
+    etiqAurore.visible = enAurore;
+    if (enAurore){
+      var ah = new THREE.Vector3(v.x, 0, v.z);
+      if (ah.lengthSq() > 1e-9){
+        ah.normalize().multiplyScalar(R * 1.04);
+        etiqAurore.position.set(ah.x, .9, ah.z);
+      }
+      if (etat.dernierAz !== null && az < etat.dernierAz - 180) etat.tours++;
+      etat.dernierAz = az;
+    } else { etat.dernierAz = null; }
+
+    // Au pôle, les cardinaux n'ont plus de sens : on les retire.
+    gCard.visible = (etat.lat < 89.5);
+    gYugas.visible = etat.yugas;
+    majPanneau(dec, h, az);
+  }
+
+  /* --- Le panneau. Tout y vient du manifeste, y compris les noms. --------- */
+  var elLect = document.getElementById("pol-lecture");
+  var elEtats = document.getElementById("pol-etats");
+
+  function nomsListe(l){ return (l.etats || []).map(function(e){ return e.nom; }); }
+
+  function majPanneau(dec, h, az){
+    var polaireExact = (etat.lat >= 89.5);
+    var mois = moisDeSoleil(etat.lat);
+    var regime = polaireExact ? "polaire"
+               : (etat.lat >= ARCTIQUE ? "circum-polaire" : "tempéré");
+    elLect.innerHTML =
+      "déclinaison <b>" + dec.toFixed(2) + "°</b> · hauteur <b>" + h.toFixed(2) + "°</b><br>" +
+      "azimut <b>" + (polaireExact ? "— toute direction est le sud" : az.toFixed(1) + "°") + "</b><br>" +
+      "régime <b>" + regime + "</b> · mois de soleil <b>" + mois.toFixed(2) + "</b><br>" +
+      "tours d'aurore <b>" + etat.tours + "</b> / " +
+      (P.etats_de_l_aurore ? P.etats_de_l_aurore.soeurs : "—") + " sœurs";
+
+    // --- Les états du soleil : TOUS nommés, TOUS représentés. ------------
+    var n = Math.round(mois), html = "";
+    (P.etats_du_soleil && P.etats_du_soleil.listes || []).forEach(function(l){
+      html += '<div class="t">' + l.titre + "</div>";
+      html += '<p class="src">' + (l.source_texte || "") + "</p>";
+      var noms = nomsListe(l);
+      if (noms.length){
+        html += "<ol>";
+        noms.forEach(function(nom, i){
+          // Le rang éclairé suit le compte des mois de soleil — c'est la LECTURE
+          // de Tilak, `academique`, jamais un fait. Les autres restent visibles :
+          // tous les états sont nommés et représentés.
+          var cls = (i < n) ? "actif" : "eteint";
+          html += '<li class="' + cls + '">' + nom + "</li>";
+        });
+        html += "</ol>";
+      }
+      if (l.huitieme){
+        html += '<div class="sug"><b>' + l.huitieme.nom + "</b> — " +
+                (l.huitieme.demeure || "") + "<br>" + (l.huitieme.citation || "") + "</div>";
+      }
+      if (l.rejete){
+        // Sidy : tous les états doivent être NOMMÉS et REPRÉSENTÉS. Le rejeté
+        // l'est donc explicitement, et distinctement — non par sa seule absence.
+        html += '<div class="rejete">rejeté : <b>' + l.rejete.nom + "</b><br>" +
+                (l.rejete.reserve_textuelle || "") + "</div>";
+      }
+      if (l.nombre){
+        html += '<div class="div">🌐 ' + l.nombre + " — " + (l.identification || "") +
+                "<br>" + (l.note || "") + "</div>";
+      }
+    });
+    var L = P.etats_du_soleil && P.etats_du_soleil.lectures_du_septenaire;
+    if (L){
+      html += '<div class="div">lectures du septénaire :<ol>';
+      (L.lectures || []).forEach(function(x){ html += "<li>" + x + "</li>"; });
+      html += "</ol>" + (L.reserve || "") + "</div>";
+    }
+    var A = P.etats_de_l_aurore;
+    if (A){
+      html += '<div class="t">États de l\'aurore</div>';
+      html += '<p class="src">' + (A.source_texte || "") + "</p>";
+      html += "<ol>" + (A.couple || []).map(function(c){
+        return "<li>" + c.nom + " — " + (c.note || "") + "</li>"; }).join("") + "</ol>";
+      html += '<div class="sug">' + (A.citations || []).join("<br>") + "</div>";
+      html += '<div class="div">' + (A.ecart_assume || "") + "</div>";
+    }
+    elEtats.innerHTML = html;
+  }
+
+  /* --- Câblage. Boutons d'abord (iPad), touches ensuite. ------------------ */
+  function curseur(id, vid, clef, fmt, apres){
+    var el = document.getElementById(id), o = document.getElementById(vid);
+    function app(){ etat[clef] = parseFloat(el.value); o.textContent = fmt(etat[clef]);
+                    if (apres) apres(); majScene(); }
+    el.addEventListener("input", app); return app;
+  }
+  var majLat  = curseur("pol-lat", "pol-lat-v", "lat", function(v){ return v.toFixed(2).replace(".", ",") + "°"; });
+  var majJour = curseur("pol-jour", "pol-jour-v", "jour", function(v){ return String(Math.round(v)); });
+  var majH    = curseur("pol-heure", "pol-heure-v", "heure", function(v){ return v.toFixed(1).replace(".", ",") + " h"; });
+  var majObl  = curseur("pol-obl", "pol-obl-v", "obl", function(v){ return v.toFixed(2).replace(".", ",") + "°"; });
+
+  // Les bornes des curseurs sont DÉRIVÉES du manifeste, jamais écrites dans le
+  // balisage : `max` de l'obliquité est l'obliquité déclarée ; `min` de la
+  // latitude est la plus basse des stations sourcées. Les valeurs portées par
+  // le HTML ne sont qu'un gabarit inerte, écrasé ici avant tout affichage.
+  (function bornes(){
+    var o = document.getElementById("pol-obl");
+    o.max = String(OBL0); o.value = String(OBL0);
+    var ov = P.obliquite_variable;
+    o.min = String(ov && ov.min_deg !== undefined ? ov.min_deg : OBL0);
+    var lats = (P.stations || []).map(function(st){ return Number(st.lat_deg); });
+    var l = document.getElementById("pol-lat");
+    l.min = String(lats.length ? Math.min.apply(null, lats) : ARCTIQUE);
+    l.value = String(etat.lat);
+    var s = document.getElementById("pol-seuil");
+    if (SEUILS.length) document.getElementById("pol-seuil-v").textContent =
+      "−" + Math.abs(Number(SEUILS[iSeuil].deg)).toFixed(0) + "°";
+  })();
+
+  var elSeuil = document.getElementById("pol-seuil");
+  elSeuil.max = String(Math.max(0, SEUILS.length - 1));
+  elSeuil.value = String(iSeuil);
+  elSeuil.addEventListener("input", function(){
+    iSeuil = parseInt(elSeuil.value, 10);
+    document.getElementById("pol-seuil-v").textContent =
+      "−" + Math.abs(Number(SEUILS[iSeuil].deg)).toFixed(0) + "°";
+    majScene();
+  });
+
+  // Les stations sont SOURCÉES : le bouton parcourt celles du manifeste, il
+  // n'en invente aucune. Le rendu ne dit pas OÙ elles étaient.
+  document.getElementById("pol-stations").addEventListener("click", function(){
+    var S = P.stations || []; if (!S.length) return;
+    etat.iStation = (etat.iStation + 1) % S.length;
+    var st = S[etat.iStation];
+    document.getElementById("pol-lat").value = st.lat_deg;
+    etat.lat = Number(st.lat_deg);
+    document.getElementById("pol-lat-v").textContent = etat.lat.toFixed(2).replace(".", ",") + "°";
+    document.getElementById("pol-pdv").innerHTML =
+      "<b>" + st.label + "</b> — « " + st.citation + " »" +
+      (st.note ? "<br><span style='opacity:.7'>" + st.note + "</span>" : "");
+    majScene();
+  });
+  function bascBouton(id, clef){
+    var b = document.getElementById(id);
+    b.addEventListener("click", function(){
+      etat[clef] = !etat[clef];
+      b.setAttribute("aria-pressed", String(etat[clef]));
+      majScene();
+    });
+  }
+  bascBouton("pol-annee", "annee");
+  bascBouton("pol-yugas", "yugas");
+
+  /* --- LA BASCULE. Elle a un lieu : le centre, là où l'axe perce le plan. -- */
+  function basculer(vers){
+    actif = (vers === undefined) ? !actif : !!vers;
+    calque.visible = actif;
+    document.getElementById("polaire").classList.toggle("on", actif);
+    // Le mode métaphysique n'est pas détruit : il est MIS EN RETRAIT, et son
+    // état antérieur est restitué à la bascule inverse. Ce qui change, c'est la
+    // détermination du plan de base, pas l'existence de l'axe.
+    //
+    // On ne touche pas `PIECES` : il est local à l'IIFE des stations et n'est
+    // pas visible d'ici. On agit sur les enfants de `monde`, en mémorisant leur
+    // visibilité propre — sans quoi la bascule aller-retour rallumerait des
+    // pièces que la station courante avait éteintes.
+    monde.children.forEach(function(o){
+      if (o === calque) return;
+      if (actif){
+        if (o.userData.__visAvantCosmo === undefined) o.userData.__visAvantCosmo = o.visible;
+        o.visible = false;
+      } else if (o.userData.__visAvantCosmo !== undefined){
+        o.visible = o.userData.__visAvantCosmo;
+        delete o.userData.__visAvantCosmo;
+      }
+    });
+    if (window.__majModeCosmo) window.__majModeCosmo(actif);
+    if (entree) entree.innerHTML = actif
+      ? "→ mode MÉTAPHYSIQUE (touche C) — l'axe des états multiples"
+      : "→ mode COSMOLOGIQUE (touche C) — l'horizon, le soleil, ses états";
+    if (actif){ etat.tours = 0; etat.dernierAz = null; majScene(); }
+  }
+  document.getElementById("bascule-mode").addEventListener("click", function(){ basculer(false); });
+  if (entree) entree.addEventListener("click", function(){ basculer(); });
+  addEventListener("keydown", function(e){
+    if (e.key === "c" || e.key === "C") basculer();
+  });
+
+  majLat(); majJour(); majH(); majObl(); majScene();
+
+  return {
+    actif: function(){ return actif; },
+    basculer: basculer,
+    majBoucle: function(dt){
+      if (!actif) return;
+      etat.heure = (etat.heure + dt * 3.2) % 24;
+      document.getElementById("pol-heure").value = etat.heure;
+      document.getElementById("pol-heure-v").textContent = etat.heure.toFixed(1).replace(".", ",") + " h";
+      if (etat.annee){
+        etat.jour = (etat.jour + dt * 1.1) % 365;
+        document.getElementById("pol-jour").value = etat.jour;
+        document.getElementById("pol-jour-v").textContent = String(Math.round(etat.jour));
+      }
+      majScene();
+    }
+  };
+})();
+
 // ---- Dimensionnement du rendu (lit le conteneur, pas la fenêtre) -------------
 function tailleConteneur(){
   return {w: wrapper.clientWidth || innerWidth, h: wrapper.clientHeight || innerHeight};
@@ -1847,6 +2329,7 @@ function anime(t){
     disques[0].rotation.z += dt * .25;
     disques[1].rotation.z -= dt * .18;
   }
+  if (typeof POLAIRE !== "undefined" && POLAIRE.majBoucle) POLAIRE.majBoucle(dt);
   placerCamera();
   renderer.render(scene, camera);
   if (window.__tracerEcarts) window.__tracerEcarts();

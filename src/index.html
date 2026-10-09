@@ -99,6 +99,62 @@
   #bascule-mode{margin:.4rem 0 0;display:block;width:100%;text-align:center;
     letter-spacing:.03em;text-transform:uppercase;font-size:.86em}
   @media (max-width:520px){ #aide{display:none} }
+  /* -- Verre, mouvement et lumière (2026-10-09) -----------------------------
+     D'abord un essai d'après trois modèles de 21st.dev (« Liquid Glass Button »,
+     « Spotlight Card », « Animated hero ») réécrits en CSS nu ; activé pour de bon
+     sur verdict de Sidy le même jour. Ne touche qu'aux panneaux : ni la scène, ni
+     ce qui dit « établi » ou « suggéré » (règle 3). */
+  /* 1. panneaux de verre : la scène se devine derrière, un liseré de lumière suit le doigt */
+  .panneau:not(#aide){ background:rgba(8,8,10,.58);
+    -webkit-backdrop-filter:blur(14px) saturate(1.3); backdrop-filter:blur(14px) saturate(1.3);
+    border-color:rgba(242,242,242,.22);
+    box-shadow:0 1px 0 rgba(255,255,255,.10) inset, 0 18px 40px -22px rgba(0,0,0,.9);
+    transition:border-color .3s, box-shadow .3s; overflow:hidden; }
+  #colonne-gauche .panneau{ position:relative }
+  .panneau:not(#aide)::before{ content:""; position:absolute; inset:0; pointer-events:none; opacity:0;
+    transition:opacity .35s;
+    background:radial-gradient(11rem circle at var(--x,50%) var(--y,0%), rgba(242,242,242,.13), transparent 70%); }
+  .panneau.touche::before{ opacity:1 }
+  .panneau.touche{ border-color:rgba(242,242,242,.45) }
+
+  /* 2. entrée : les panneaux paraissent l'un après l'autre */
+  #titre{ animation:mvt-entre .7s cubic-bezier(.2,.7,.1,1) both }
+  #stations{ animation:mvt-entre .7s cubic-bezier(.2,.7,.1,1) .12s both }
+  #legende{ animation:mvt-entre .7s cubic-bezier(.2,.7,.1,1) .24s both }
+  #aide{ animation:mvt-paru 1.2s ease .5s both }
+  #info, #polaire.on{ animation:mvt-entre .45s cubic-bezier(.2,.7,.1,1) both }
+  @keyframes mvt-entre{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+  @keyframes mvt-paru{ from{opacity:0} to{opacity:.55} }
+
+  /* 3. stations : un appui qui répond, la station tenue s'allume, son texte se renouvelle */
+  #stations button, #polaire button{ transition:background .2s, color .2s, border-color .2s, transform .12s, box-shadow .25s }
+  #stations button:active:not(:disabled), #polaire button:active{ transform:scale(.92) }
+  #stations button[aria-pressed="true"], #polaire button[aria-pressed="true"]{
+    box-shadow:0 0 0 1px rgba(242,242,242,.9), 0 0 16px rgba(242,242,242,.35) }
+  .renouvele{ animation:mvt-renouvele .45s cubic-bezier(.2,.7,.1,1) both }
+  @keyframes mvt-renouvele{ from{opacity:0; transform:translateY(5px); filter:blur(3px)} to{opacity:1; transform:none; filter:none} }
+
+  /* 4. curseurs du mode cosmologique : un trait fin, une pastille nette */
+  #polaire input[type=range]{ -webkit-appearance:none; appearance:none; height:18px; background:none }
+  #polaire input[type=range]::-webkit-slider-runnable-track{ height:1px; background:rgba(242,242,242,.45) }
+  #polaire input[type=range]::-moz-range-track{ height:1px; background:rgba(242,242,242,.45) }
+  #polaire input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:12px; height:12px; margin-top:-6px;
+    background:var(--blanc); border:0; box-shadow:0 0 10px rgba(242,242,242,.5); transition:transform .12s }
+  #polaire input[type=range]::-moz-range-thumb{ width:12px; height:12px; background:var(--blanc); border:0; border-radius:0 }
+  #polaire input[type=range]:active::-webkit-slider-thumb{ transform:scale(1.35) }
+
+  /* 5. légende repliable : ouverte par défaut, pour que l'établi et le suggéré restent lisibles */
+  #legende .mvt-pli{ display:block; width:100%; margin:0 0 .3rem; padding:0; font:inherit; font-size:.9em; text-align:left;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--blanc); background:none; border:0; cursor:pointer;
+    -webkit-tap-highlight-color:transparent }
+  #legende .mvt-pli::after{ content:" −"; opacity:.6 }
+  #legende.pliee .mvt-pli{ margin:0 }
+  #legende.pliee .mvt-pli::after{ content:" +" }
+  #legende.pliee .mvt-corps{ display:none }
+
+  @media (prefers-reduced-motion:reduce){
+    .panneau, .renouvele, button{ animation:none !important; transition:none !important }
+  }
 </style>
 </head>
 <body>
@@ -2350,23 +2406,48 @@ chargerManifeste(function(){
   ], 0);
 });
 </script>
-<!-- ESSAI 21st (demande de Sidy, 2026-10-09) : `?essai=21st` l'allume, `?essai=non` l'éteint ; le
-     choix tient d'une visite à l'autre. Éteint, rien n'est chargé. Tout l'essai vit dans
-     essai-21st.css et essai-21st.js : ôter ce bloc et ces deux fichiers l'efface. -->
 <script>
+// Verre, mouvement et lumière (2026-10-09, voir la fin de la feuille de style). N'écoute que les
+// panneaux : ni la scène, ni le manifeste, ni l'état de l'Instrument ne sont lus ou modifiés.
 (function(){
-  var CLE = 'instrument-essai', choix = null;
-  try{
-    var q = new URLSearchParams(location.search).get('essai');
-    if (q === '21st') localStorage.setItem(CLE, '21st');
-    else if (q) localStorage.removeItem(CLE);
-    choix = localStorage.getItem(CLE);
-  }catch(e){ choix = /[?&]essai=21st/.test(location.search) ? '21st' : null; }
-  if (choix !== '21st') return;
-  var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'essai-21st.css?v=1';
-  document.head.appendChild(l);
-  var s = document.createElement('script'); s.src = 'essai-21st.js?v=1';
-  document.body.appendChild(s);
+  'use strict';
+  // liseré de lumière sous le doigt
+  Array.prototype.forEach.call(document.querySelectorAll('.panneau:not(#aide)'), function(p){
+    function suivre(e){
+      var r = p.getBoundingClientRect();
+      p.style.setProperty('--x', (e.clientX - r.left) + 'px');
+      p.style.setProperty('--y', (e.clientY - r.top) + 'px');
+      p.classList.add('touche');
+    }
+    p.addEventListener('pointermove', suivre);
+    p.addEventListener('pointerdown', suivre);
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(t){
+      p.addEventListener(t, function(){ p.classList.remove('touche'); });
+    });
+  });
+
+  // le texte d'une station ou d'un nœud se renouvelle quand il change
+  ['station-nom', 'station-dit', 'station-garde', 'info-label', 'info-deg', 'pol-pdv'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (!el || !window.MutationObserver) return;
+    new MutationObserver(function(){
+      el.classList.remove('renouvele'); void el.offsetWidth; el.classList.add('renouvele');
+    }).observe(el, { childList:true, characterData:true, subtree:true });
+  });
+
+  // légende repliable, ouverte par défaut
+  var leg = document.getElementById('legende');
+  if (leg){
+    var corps = document.createElement('div'); corps.className = 'mvt-corps';
+    while (leg.firstChild) corps.appendChild(leg.firstChild);
+    var pli = document.createElement('button'); pli.type = 'button'; pli.className = 'mvt-pli';
+    pli.textContent = 'Légende'; pli.setAttribute('aria-expanded', 'true');
+    pli.addEventListener('click', function(){
+      var pliee = leg.classList.toggle('pliee');
+      pli.setAttribute('aria-expanded', pliee ? 'false' : 'true');
+    });
+    leg.appendChild(pli); leg.appendChild(corps);
+  }
 })();
 </script>
 </body>

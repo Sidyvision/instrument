@@ -2350,5 +2350,24 @@ chargerManifeste(function(){
   ], 0);
 });
 </script>
+<!-- ESSAI 21st (demande de Sidy, 2026-10-09) : `?essai=21st` l'allume, `?essai=non` l'éteint ; le
+     choix tient d'une visite à l'autre. Éteint, rien n'est chargé. Tout l'essai vit dans
+     essai-21st.css et essai-21st.js : ôter ce bloc et ces deux fichiers l'efface. -->
+<script>
+(function(){
+  var CLE = 'instrument-essai', choix = null;
+  try{
+    var q = new URLSearchParams(location.search).get('essai');
+    if (q === '21st') localStorage.setItem(CLE, '21st');
+    else if (q) localStorage.removeItem(CLE);
+    choix = localStorage.getItem(CLE);
+  }catch(e){ choix = /[?&]essai=21st/.test(location.search) ? '21st' : null; }
+  if (choix !== '21st') return;
+  var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'essai-21st.css?v=1';
+  document.head.appendChild(l);
+  var s = document.createElement('script'); s.src = 'essai-21st.js?v=1';
+  document.body.appendChild(s);
+})();
+</script>
 </body>
 </html>
